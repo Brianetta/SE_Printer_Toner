@@ -1,0 +1,15 @@
+﻿Printer Toner
+-------------
+A script tp keep your printer printing.
+
+Configure using CustomData. In the Programmable Block, the Printer section
+sets the options, the Components section is where you configure the amounts
+you want. Put a Printer section into any screen and one assembler. Here are
+the defaults:
+
+[printer]
+delay=3     # Set this to change the update frequency.
+display=0   # Use this to control a display for output (they start at 0)
+scale = 1.0 # Make things on the display larger or smaller
+skip = 0    # Use this on a second screen if the lines don't all fit on the first, to skip lines
+monospace = false  # change to true to display numbers in the monospace font

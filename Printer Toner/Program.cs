@@ -1,0 +1,295 @@
+﻿using Sandbox.Game.EntityComponents;
+using Sandbox.ModAPI.Ingame;
+using Sandbox.ModAPI.Interfaces;
+using SpaceEngineers.Game.ModAPI.Ingame;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
+using VRage;
+using VRage.Collections;
+using VRage.Game;
+using VRage.Game.Components;
+using VRage.Game.GUI.TextPanel;
+using VRage.Game.ModAPI.Ingame;
+using VRage.Game.ModAPI.Ingame.Utilities;
+using VRage.Game.ObjectBuilders.Definitions;
+using VRageMath;
+
+namespace IngameScript
+{
+    partial class Program : MyGridProgram
+    {
+        List<IMyTerminalBlock> Containers = new List<IMyTerminalBlock>();
+        IMyAssembler Assembler;
+        string Version = "Version 1.01";
+        MyIni ini = new MyIni();
+        string ComponentSection = "Components";
+        string PrinterSection = "Printer";
+        Dictionary<string, Requirement> Components = new Dictionary<string, Requirement>();
+        List<MyInventoryItem> Items = new List<MyInventoryItem>();
+        List<MyIniKey> iniKeys = new List<MyIniKey>();
+        List<MyProductionItem> Queue = new List<MyProductionItem>();
+        List<ManagedDisplay> Screens = new List<ManagedDisplay>();
+        IEnumerator<bool> _stateMachine;
+        int delayCounter = 0;
+        int delay;
+        bool rebuild = false;
+
+        public class Requirement
+        {
+            public int Stock;
+            public int Required;
+            public int Production;
+
+            public int ToBuild()
+            {
+                if (Required - Stock - Production > 0)
+                    return (Required - Stock - Production);
+                else
+                    return 0;
+            }
+
+            public void Zero()
+            {
+                Stock = Required = Production = 0;
+            }
+        }
+
+        public void GetBlocks()
+        {
+            Containers.Clear();
+            Screens.Clear();
+            Assembler = null;
+            GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(Containers, block =>
+            {
+                if (!block.IsSameConstructAs(Me))
+                    return false;
+                TryAddScreen(block);
+                if (!block.HasInventory)
+                    return false;
+                if (null == Assembler && MyIni.HasSection(block.CustomData, PrinterSection))
+                    Assembler = block as IMyAssembler;
+                return true;
+            });
+        }
+
+        private void TryAddScreen(IMyTerminalBlock block)
+        {
+            IMyTextSurfaceProvider Provider = block as IMyTextSurfaceProvider;
+            if (null == Provider || Provider.SurfaceCount == 0 || !MyIni.HasSection(block.CustomData, PrinterSection))
+                return;
+            ini.TryParse(block.CustomData);
+            var displayNumber = ini.Get(PrinterSection, "display").ToUInt16();
+            var linesToSkip = ini.Get(PrinterSection, "skip").ToInt16();
+            bool monospace = ini.Get(PrinterSection, "mono").ToBoolean();
+            if (displayNumber < ((IMyTextSurfaceProvider)Provider).SurfaceCount || ((IMyTextSurfaceProvider)Provider).SurfaceCount == 0)
+            {
+                var display = ((IMyTextSurfaceProvider)Provider).GetSurface(displayNumber);
+                float scale = ini.Get(PrinterSection, "scale").ToSingle(1.0f);
+                string DefaultColor = "FF4500";
+                string ColorStr = ini.Get(PrinterSection, "color").ToString(DefaultColor);
+                if (ColorStr.Length < 6)
+                    ColorStr = DefaultColor;
+                Color color = new Color()
+                {
+                    R = byte.Parse(ColorStr.Substring(0, 2), System.Globalization.NumberStyles.HexNumber),
+                    G = byte.Parse(ColorStr.Substring(2, 2), System.Globalization.NumberStyles.HexNumber),
+                    B = byte.Parse(ColorStr.Substring(4, 2), System.Globalization.NumberStyles.HexNumber),
+                    A = 255
+                };
+                Screens.Add(new ManagedDisplay(display, scale, color, linesToSkip, monospace));
+            }
+            else
+            {
+                Echo("Warning: " + block.CustomName + " doesn't have a display number " + ini.Get(PrinterSection, "display").ToString());
+            }
+        }
+
+        public void TaskAssembler()
+        {
+            foreach (string component in Components.Keys)
+                TaskAssembler(component);
+        }
+
+        public void TaskAssembler(String component)
+        {
+            MyDefinitionId Task;
+            MyDefinitionId.TryParse("MyObjectBuilder_BlueprintDefinition/" + component, out Task);
+            if (null == Task || !Assembler.CanUseBlueprint(Task))
+                MyDefinitionId.TryParse("MyObjectBuilder_BlueprintDefinition/" + component + "Component", out Task);
+            if (null != Task && Assembler.CanUseBlueprint(Task))                
+            {
+                var required = Components[component].ToBuild();
+                if(required>0)
+                {
+                    Assembler.AddQueueItem(Task, (decimal)required);
+                }
+            }
+        }
+
+        public void RunComponentCounter()
+        {
+            if (_stateMachine != null)
+            {
+                bool hasMoreSteps = _stateMachine.MoveNext();
+
+                if (hasMoreSteps)
+                {
+                    Runtime.UpdateFrequency |= UpdateFrequency.Once;
+                }
+                else
+                {
+                    _stateMachine.Dispose();
+                    _stateMachine = null;
+                }
+            }
+        }
+
+        public IEnumerator<bool> CountComponents()
+        {
+            foreach (var Component in Components.Values)
+                Component.Zero();
+            yield return true;
+            ReadConfig();
+            yield return true;
+            GetAssemblerQueueAmounts();
+            yield return true;
+            foreach (var container in Containers)
+            {
+                var Inventories = container.GetInventory();
+                for (int i = 0; i < container.InventoryCount; ++i)
+                {
+                    var inventory = container.GetInventory(i);
+                    if (inventory.ItemCount > 0)
+                    {
+                        Items.Clear();
+                        inventory.GetItems(Items, item => item.Type.TypeId == "MyObjectBuilder_Component");
+                        foreach (var component in Items)
+                        {
+                            if (!Components.ContainsKey(component.Type.SubtypeId))
+                                Components.Add(component.Type.SubtypeId, new Requirement());
+                            Components[component.Type.SubtypeId].Stock += component.Amount.ToIntSafe();
+                        }
+                        yield return true;
+                    }
+                }
+            }
+            EchoStuff();
+            TaskAssembler();
+        }
+
+        public Program()
+        {
+            Runtime.UpdateFrequency = UpdateFrequency.Update100;
+            GetBlocks();
+            ReadConfig();
+            GetAssemblerQueueAmounts();
+            Me.CustomData = ConfiguredCustomData();
+        }
+
+        private void ReadConfig()
+        {
+            if (ini.TryParse(Me.CustomData))
+            {
+                if (ini.ContainsSection(ComponentSection))
+                {
+                    ini.GetKeys(ComponentSection, iniKeys);
+                    foreach (var key in iniKeys)
+                    {
+                        if (!Components.ContainsKey(key.Name))
+                            Components.Add(key.Name, new Requirement());
+                        Components[key.Name].Required = ini.Get(ComponentSection, key.Name).ToInt32(0);
+                    }
+                }
+                else
+                {
+                    Me.CustomData = ConfiguredCustomData();
+                }
+                delay = ini.Get(PrinterSection, "delay").ToInt32(3);
+            }
+        }
+
+        private void GetAssemblerQueueAmounts()
+        {
+            Assembler?.GetQueue(Queue);
+            if (null == Queue)
+                return;
+            foreach (var item in Queue)
+            {
+                string key = item.BlueprintId.SubtypeName;
+                if (key.EndsWith("Component"))
+                    key = key.Remove(key.Length - "Component".Length);
+                if (!Components.ContainsKey(key))
+                    Components.Add(key, new Requirement());
+                if (Components.ContainsKey(key))
+                {
+                    Components[key].Production += (int)item.Amount;
+                }
+            }
+        }
+
+        private void EchoStuff()
+        {
+            Echo(Version);
+            Echo(Screens.Count + " screens");
+            Echo(Containers.Count + " blocks with inventories");
+            Echo(Components.Count + " components being tracked");
+            Echo("Assembler: " + Assembler?.CustomName);
+            foreach (var display in Screens)
+            {
+                display.Render(Components);
+            }
+        }
+
+        private String ConfiguredCustomData()
+        {
+            ini.TryParse(Me.CustomData);
+            foreach (var key in Components.Keys)
+            {
+                ini.Set(ComponentSection, key, Components[key].Required);
+            }
+            return (ini.ToString());
+        }
+
+        public void Main(string argument, UpdateType updateSource)
+        {
+            if ((updateSource & UpdateType.Once) == UpdateType.Once)
+            {
+                RunComponentCounter();
+            }
+            if ((updateSource & UpdateType.Update100) == UpdateType.Update100)
+            {
+                if (delayCounter > delay && _stateMachine == null)
+                {
+                    if (rebuild)
+                    {
+                        rebuild = false;
+                        GetBlocks();
+                        ReadConfig();
+                        GetAssemblerQueueAmounts();
+                        Me.CustomData = ConfiguredCustomData();
+                    }
+                    delayCounter = 0;
+                    _stateMachine = CountComponents();
+                    RunComponentCounter();
+                }
+                else
+                {
+                    ++delayCounter;
+                }
+            }
+            if (argument == "count" && _stateMachine == null)
+            {
+                _stateMachine = CountComponents();
+                RunComponentCounter();
+            }
+            if (argument == "rebuild")
+            {
+                rebuild = true;
+            }
+        }
+    }
+}

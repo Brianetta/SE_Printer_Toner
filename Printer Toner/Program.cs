@@ -23,8 +23,9 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         List<IMyTerminalBlock> Containers = new List<IMyTerminalBlock>();
-        IMyAssembler Assembler;
-        string Version = "Version 1.01";
+        List<IMyAssembler> AllAssemblers = new List<IMyAssembler>();
+        List<IMyAssembler> PrintAssemblers = new List<IMyAssembler>();
+        string Version = "Version 1.10";
         MyIni ini = new MyIni();
         string ComponentSection = "Components";
         string PrinterSection = "Printer";
@@ -37,6 +38,7 @@ namespace IngameScript
         int delayCounter = 0;
         int delay;
         bool rebuild = false;
+        private readonly String BlueprintPrefix = "MyObjectBuilder_BlueprintDefinition/";
 
         public class Requirement
         {
@@ -62,7 +64,9 @@ namespace IngameScript
         {
             Containers.Clear();
             Screens.Clear();
-            Assembler = null;
+            AllAssemblers.Clear();
+            PrintAssemblers.Clear();
+            IMyAssembler assembler = null;
             GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(Containers, block =>
             {
                 if (!block.IsSameConstructAs(Me))
@@ -70,8 +74,15 @@ namespace IngameScript
                 TryAddScreen(block);
                 if (!block.HasInventory)
                     return false;
-                if (null == Assembler && MyIni.HasSection(block.CustomData, PrinterSection))
-                    Assembler = block as IMyAssembler;
+                assembler = block as IMyAssembler;
+                if (null != assembler)
+                {
+                    AllAssemblers.Add(assembler);
+                    if (MyIni.HasSection(assembler.CustomData, PrinterSection))
+                    {
+                        PrintAssemblers.Add(assembler);
+                    }
+                }
                 return true;
             });
         }
@@ -117,15 +128,23 @@ namespace IngameScript
         public void TaskAssembler(String component)
         {
             MyDefinitionId Task;
-            MyDefinitionId.TryParse("MyObjectBuilder_BlueprintDefinition/" + component, out Task);
-            if (null == Task || !Assembler.CanUseBlueprint(Task))
-                MyDefinitionId.TryParse("MyObjectBuilder_BlueprintDefinition/" + component + "Component", out Task);
-            if (null != Task && Assembler.CanUseBlueprint(Task))                
+            foreach (var assembler in PrintAssemblers)
             {
-                var required = Components[component].ToBuild();
-                if(required>0)
+                if (assembler.CooperativeMode) // Don't task these things. Let the vanilla game do that.
+                    break;
+                MyDefinitionId.TryParse(BlueprintPrefix + component, out Task);
+                if (null == Task || !assembler.CanUseBlueprint(Task)) // Component doesn't work?
+                    MyDefinitionId.TryParse(BlueprintPrefix + component + "Component", out Task); // Try slapping "Component" on the blueprint name
+                if (null == Task)
+                    return;
+                if (assembler.CanUseBlueprint(Task))
                 {
-                    Assembler.AddQueueItem(Task, (decimal)required);
+                    var required = Components[component].ToBuild();
+                    if (required > 0)
+                    {
+                        assembler.AddQueueItem(Task, (decimal)required);
+                    }
+                    return;
                 }
             }
         }
@@ -214,19 +233,22 @@ namespace IngameScript
 
         private void GetAssemblerQueueAmounts()
         {
-            Assembler?.GetQueue(Queue);
-            if (null == Queue)
-                return;
-            foreach (var item in Queue)
+            foreach (var assembler in AllAssemblers)
             {
-                string key = item.BlueprintId.SubtypeName;
-                if (key.EndsWith("Component"))
-                    key = key.Remove(key.Length - "Component".Length);
-                if (!Components.ContainsKey(key))
-                    Components.Add(key, new Requirement());
-                if (Components.ContainsKey(key))
+                assembler.GetQueue(Queue);
+                if (null == Queue)
+                    return;
+                foreach (var item in Queue)
                 {
-                    Components[key].Production += (int)item.Amount;
+                    string key = item.BlueprintId.SubtypeName;
+                    if (key.EndsWith("Component"))
+                        key = key.Remove(key.Length - "Component".Length);
+                    if (!Components.ContainsKey(key))
+                        Components.Add(key, new Requirement());
+                    if (Components.ContainsKey(key))
+                    {
+                        Components[key].Production += (int)item.Amount;
+                    }
                 }
             }
         }
@@ -237,7 +259,7 @@ namespace IngameScript
             Echo(Screens.Count + " screens");
             Echo(Containers.Count + " blocks with inventories");
             Echo(Components.Count + " components being tracked");
-            Echo("Assembler: " + Assembler?.CustomName);
+            Echo(AllAssemblers.Count + " assemblers found, of which I can use " +PrintAssemblers.Count);
             foreach (var display in Screens)
             {
                 display.Render(Components);

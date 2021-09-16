@@ -38,6 +38,7 @@ namespace IngameScript
             private int linesToSkip;
             private bool monospace;
             private readonly String SpritePrefix = "MyObjectBuilder_Component/";
+            private bool MakeSpriteCacheDirty = false;
 
             public ManagedDisplay(IMyTextSurface surface, float scale = 1.0f, Color highlightColor = new Color(), int linesToSkip = 0, bool monospace = false)
             {
@@ -171,7 +172,17 @@ namespace IngameScript
 
             internal void Render(Dictionary<String, Program.Requirement> Components)
             {
+                MakeSpriteCacheDirty = !MakeSpriteCacheDirty;
                 frame = surface.DrawFrame();
+                if (MakeSpriteCacheDirty)
+                {
+                    frame.Add(new MySprite()
+                    {
+                        Type = SpriteType.TEXTURE,
+                        Data = "SquareSimple",
+                        Color = surface.BackgroundColor,
+                    });
+                }
                 AddHeading();
                 int renderLineCount = 0;
                 foreach (var component in Components.Keys)

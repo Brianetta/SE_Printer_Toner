@@ -130,8 +130,9 @@ namespace IngameScript
             MyDefinitionId Task;
             foreach (var assembler in PrintAssemblers)
             {
-                if (assembler.CooperativeMode) // Don't task these things. Let the vanilla game do that.
-                    break;
+                // A bunch of assembler states that we shouldn't use
+                if (assembler.CooperativeMode || !assembler.Enabled || !assembler.IsFunctional || assembler.Mode == MyAssemblerMode.Disassembly)
+                    continue;
                 MyDefinitionId.TryParse(BlueprintPrefix + component, out Task);
                 if (null == Task || !assembler.CanUseBlueprint(Task)) // Component doesn't work?
                     MyDefinitionId.TryParse(BlueprintPrefix + component + "Component", out Task); // Try slapping "Component" on the blueprint name
@@ -235,9 +236,11 @@ namespace IngameScript
         {
             foreach (var assembler in AllAssemblers)
             {
+                if (assembler.Mode == MyAssemblerMode.Disassembly)
+                    continue;
                 assembler.GetQueue(Queue);
                 if (null == Queue)
-                    return;
+                    continue;
                 foreach (var item in Queue)
                 {
                     string key = item.BlueprintId.SubtypeName;
@@ -259,7 +262,9 @@ namespace IngameScript
             Echo(Screens.Count + " screens");
             Echo(Containers.Count + " blocks with inventories");
             Echo(Components.Count + " components being tracked");
-            Echo(AllAssemblers.Count + " assemblers found, of which I can use " +PrintAssemblers.Count);
+            Echo(AllAssemblers.Count + " assemblers found, of which I can use:");
+            foreach (var assembler in PrintAssemblers)
+                Echo(assembler.CustomName);
             foreach (var display in Screens)
             {
                 display.Render(Components);

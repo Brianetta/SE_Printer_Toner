@@ -25,7 +25,7 @@ namespace IngameScript
         List<IMyTerminalBlock> Containers = new List<IMyTerminalBlock>();
         List<IMyAssembler> AllAssemblers = new List<IMyAssembler>();
         List<IMyAssembler> PrintAssemblers = new List<IMyAssembler>();
-        string Version = "Version 1.10";
+        string Version = "Version 1.2.0";
         MyIni ini = new MyIni();
         string ComponentSection = "Components";
         string PrinterSection = "Printer";

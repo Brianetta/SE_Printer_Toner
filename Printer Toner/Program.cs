@@ -85,6 +85,8 @@ namespace IngameScript
                 }
                 return true;
             });
+            if (PrintAssemblers.Count() == 0) // No assemblers were marked for use, so use them all.
+                PrintAssemblers.AddList(AllAssemblers);
         }
 
         private void TryAddScreen(IMyTerminalBlock block)

@@ -181,7 +181,6 @@ namespace IngameScript
             yield return true;
             foreach (var container in Containers)
             {
-                var Inventories = container.GetInventory();
                 for (int i = 0; i < container.InventoryCount; ++i)
                 {
                     var inventory = container.GetInventory(i);

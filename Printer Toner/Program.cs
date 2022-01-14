@@ -247,8 +247,6 @@ namespace IngameScript
                     string key = item.BlueprintId.SubtypeName;
                     if (key.EndsWith("Component"))
                         key = key.Remove(key.Length - "Component".Length);
-                    if (!Components.ContainsKey(key))
-                        Components.Add(key, new Requirement());
                     if (Components.ContainsKey(key))
                     {
                         Components[key].Production += (int)item.Amount;

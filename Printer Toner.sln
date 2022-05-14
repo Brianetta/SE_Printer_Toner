@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31515.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Printer Toner", "Printer Toner\Printer Toner.csproj", "{D79E28A8-16CD-4C15-8971-88848061DD42}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D79E28A8-16CD-4C15-8971-88848061DD42}.Debug|x64.ActiveCfg = Debug|x64
+		{D79E28A8-16CD-4C15-8971-88848061DD42}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {364EE281-9A45-4C6F-9EBA-8A5D8E6B7D8F}
+	EndGlobalSection
+EndGlobal

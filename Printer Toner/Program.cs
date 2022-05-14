@@ -25,10 +25,13 @@ namespace IngameScript
         List<IMyTerminalBlock> Containers = new List<IMyTerminalBlock>();
         List<IMyAssembler> AllAssemblers = new List<IMyAssembler>();
         List<IMyAssembler> PrintAssemblers = new List<IMyAssembler>();
-        string Version = "Version 1.2.2";
+        string Version = "Version 1.3.0";
         MyIni ini = new MyIni();
         string ComponentSection = "Components";
         string PrinterSection = "Printer";
+        string DisplaySectionPrefix = "Display";
+        StringBuilder SectionCandidateName = new StringBuilder();
+        List<String> SectionNames = new List<string>();
         Dictionary<string, Requirement> Components = new Dictionary<string, Requirement>();
         List<MyInventoryItem> Items = new List<MyInventoryItem>();
         List<MyIniKey> iniKeys = new List<MyIniKey>();
@@ -71,6 +74,7 @@ namespace IngameScript
             {
                 if (!block.IsSameConstructAs(Me))
                     return false;
+                TryAddDiscreteScreens(block);
                 TryAddScreen(block);
                 if (!block.HasInventory)
                     return false;
@@ -89,6 +93,51 @@ namespace IngameScript
                 PrintAssemblers.AddList(AllAssemblers);
         }
 
+        void AddScreen(IMyTextSurfaceProvider provider, int displayNumber, string section)
+        {
+            var display = ((IMyTextSurfaceProvider)provider).GetSurface(displayNumber);
+            var linesToSkip = ini.Get(section, "skip").ToInt16();
+            bool monospace = ini.Get(section, "mono").ToBoolean();
+            float scale = ini.Get(section, "scale").ToSingle(1.0f);
+            string DefaultColor = "FF4500";
+            string ColorStr = ini.Get(section, "color").ToString(DefaultColor);
+            if (ColorStr.Length < 6)
+                ColorStr = DefaultColor;
+            Color color = new Color()
+            {
+                R = byte.Parse(ColorStr.Substring(0, 2), System.Globalization.NumberStyles.HexNumber),
+                G = byte.Parse(ColorStr.Substring(2, 2), System.Globalization.NumberStyles.HexNumber),
+                B = byte.Parse(ColorStr.Substring(4, 2), System.Globalization.NumberStyles.HexNumber),
+                A = 255
+            };
+            Screens.Add(new ManagedDisplay(display, scale, color, linesToSkip, monospace));
+        }
+
+        private void TryAddDiscreteScreens(IMyTerminalBlock block)
+        {
+            IMyTextSurfaceProvider Provider = block as IMyTextSurfaceProvider;
+            if (null == Provider || Provider.SurfaceCount == 0)
+                return;
+            StringComparison ignoreCase = StringComparison.InvariantCultureIgnoreCase;
+            ini.TryParse(block.CustomData);
+            ini.GetSections(SectionNames);
+            foreach (var section in SectionNames)
+            {
+                if (section.StartsWith(DisplaySectionPrefix, ignoreCase))
+                {
+                    for (int displayNumber = 0; displayNumber < Provider.SurfaceCount; ++displayNumber)
+                    {
+                        SectionCandidateName.Clear();
+                        SectionCandidateName.Append(DisplaySectionPrefix).Append(displayNumber.ToString());
+                        if (section.Equals(SectionCandidateName.ToString(), ignoreCase) && ini.Get(section, "script").ToString().Equals(PrinterSection, ignoreCase))
+                        {
+                            AddScreen(Provider, displayNumber, section);
+                        }
+                    }
+                }
+            }
+        }
+
         private void TryAddScreen(IMyTerminalBlock block)
         {
             IMyTextSurfaceProvider Provider = block as IMyTextSurfaceProvider;
@@ -96,24 +145,9 @@ namespace IngameScript
                 return;
             ini.TryParse(block.CustomData);
             var displayNumber = ini.Get(PrinterSection, "display").ToUInt16();
-            var linesToSkip = ini.Get(PrinterSection, "skip").ToInt16();
-            bool monospace = ini.Get(PrinterSection, "mono").ToBoolean();
             if (displayNumber < ((IMyTextSurfaceProvider)Provider).SurfaceCount || ((IMyTextSurfaceProvider)Provider).SurfaceCount == 0)
             {
-                var display = ((IMyTextSurfaceProvider)Provider).GetSurface(displayNumber);
-                float scale = ini.Get(PrinterSection, "scale").ToSingle(1.0f);
-                string DefaultColor = "FF4500";
-                string ColorStr = ini.Get(PrinterSection, "color").ToString(DefaultColor);
-                if (ColorStr.Length < 6)
-                    ColorStr = DefaultColor;
-                Color color = new Color()
-                {
-                    R = byte.Parse(ColorStr.Substring(0, 2), System.Globalization.NumberStyles.HexNumber),
-                    G = byte.Parse(ColorStr.Substring(2, 2), System.Globalization.NumberStyles.HexNumber),
-                    B = byte.Parse(ColorStr.Substring(4, 2), System.Globalization.NumberStyles.HexNumber),
-                    A = 255
-                };
-                Screens.Add(new ManagedDisplay(display, scale, color, linesToSkip, monospace));
+                AddScreen(Provider, displayNumber, PrinterSection);
             }
             else
             {

@@ -8,8 +8,32 @@ you want. Put a Printer section into any screen and one assembler. Here are
 the defaults:
 
 [printer]
-delay=3     # Set this to change the update frequency.
-display=0   # Use this to control a display for output (they start at 0)
-scale = 1.0 # Make things on the display larger or smaller
-skip = 0    # Use this on a second screen if the lines don't all fit on the first, to skip lines
-mono = false  # change to true to display numbers in the monospace font
+delay=3         # Set this to change the update frequency.
+display=0      # Use this to control a display for output (they start at 0)
+scale = 1.0     # Make things on the display larger or smaller
+skip = 0         # Use this on a second screen if the lines don't all fit on the first, to skip lines
+color = 00FF55 # Use this to customise the header color of a screen
+mono = false     # change to true to display numbers in the monospace font
+
+An alternative, for those who wish to use more than one screen on a given
+block at once, is to configure displays in the following manner (this example
+works on the Sci-Fi Button Panel):
+
+[display0]
+script=printer
+scale=0.4
+
+[display1]
+script=printer
+scale=0.4
+skip=5
+
+[display2]
+script=printer
+scale=0.4
+skip=10
+
+[display3]
+script=printer
+scale=0.4
+skip=15

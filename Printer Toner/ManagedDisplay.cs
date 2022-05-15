@@ -56,7 +56,8 @@ namespace IngameScript
 
                 surface.ContentType = ContentType.SCRIPT;
                 surface.Script = "TSS_FactionIcon";
-                viewport = new RectangleF((surface.TextureSize - surface.SurfaceSize) / 2f, surface.SurfaceSize);
+                Vector2 padding = surface.TextureSize * (surface.TextPadding / 100);
+                viewport = new RectangleF((surface.TextureSize - surface.SurfaceSize) / 2f + padding, surface.SurfaceSize - (2*padding));
                 WindowSize = ((int)((viewport.Height - 10 * scale) / LineHeight));
             }
 
@@ -64,7 +65,7 @@ namespace IngameScript
             {
                 surface.Script = "";
                 surface.ScriptBackgroundColor = Color.Black;
-                Position = new Vector2(surface.TextPadding + viewport.Width / 8f, StartHeight) + viewport.Position;
+                Position = new Vector2(viewport.Width / 10f, StartHeight) + viewport.Position;
                 frame.Add(new MySprite()
                 {
                     Type = SpriteType.TEXTURE,
@@ -189,7 +190,7 @@ namespace IngameScript
                 {
                     if (++renderLineCount > linesToSkip)
                     {
-                        Position.X = surface.TextPadding + viewport.Width / 10f + viewport.Position.X;
+                        Position.X = viewport.Width / 10f + viewport.Position.X;
                         if (renderLineCount >= linesToSkip && renderLineCount < linesToSkip + WindowSize)
                             RenderRow(component, Components[component]);
                         Position.Y += LineHeight;

@@ -19,21 +19,17 @@ An alternative, for those who wish to use more than one screen on a given
 block at once, is to configure displays in the following manner (this example
 works on the Sci-Fi Button Panel):
 
-[display0]
-script=printer
+[printer_display0]
 scale=0.4
 
-[display1]
-script=printer
+[printer_display1]
 scale=0.4
 skip=5
 
-[display2]
-script=printer
+[printer_display2]
 scale=0.4
 skip=10
 
-[display3]
-script=printer
+[printer_display3]
 scale=0.4
 skip=15

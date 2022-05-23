@@ -25,11 +25,11 @@ namespace IngameScript
         List<IMyTerminalBlock> Containers = new List<IMyTerminalBlock>();
         List<IMyAssembler> AllAssemblers = new List<IMyAssembler>();
         List<IMyAssembler> PrintAssemblers = new List<IMyAssembler>();
-        string Version = "Version 1.3.1";
+        static readonly string Version = "Version 1.3.2";
         MyIni ini = new MyIni();
-        string ComponentSection = "Components";
-        string PrinterSection = "Printer";
-        string DisplaySectionPrefix = "Display";
+        static readonly string ComponentSection = "Components";
+        static readonly string PrinterSection = "Printer";
+        static readonly string DisplaySectionPrefix = PrinterSection + "_Display";
         StringBuilder SectionCandidateName = new StringBuilder();
         List<String> SectionNames = new List<string>();
         Dictionary<string, Requirement> Components = new Dictionary<string, Requirement>();
@@ -129,7 +129,7 @@ namespace IngameScript
                     {
                         SectionCandidateName.Clear();
                         SectionCandidateName.Append(DisplaySectionPrefix).Append(displayNumber.ToString());
-                        if (section.Equals(SectionCandidateName.ToString(), ignoreCase) && ini.Get(section, "script").ToString().Equals(PrinterSection, ignoreCase))
+                        if (section.Equals(SectionCandidateName.ToString(), ignoreCase))
                         {
                             AddScreen(Provider, displayNumber, section);
                         }

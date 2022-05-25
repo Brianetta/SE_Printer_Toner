@@ -25,7 +25,7 @@ namespace IngameScript
         List<IMyTerminalBlock> Containers = new List<IMyTerminalBlock>();
         List<IMyAssembler> AllAssemblers = new List<IMyAssembler>();
         List<IMyAssembler> PrintAssemblers = new List<IMyAssembler>();
-        static readonly string Version = "Version 1.3.2";
+        static readonly string Version = "Version 1.3.3";
         MyIni ini = new MyIni();
         static readonly string ComponentSection = "Components";
         static readonly string PrinterSection = "Printer";
@@ -74,8 +74,8 @@ namespace IngameScript
             {
                 if (!block.IsSameConstructAs(Me))
                     return false;
-                TryAddDiscreteScreens(block);
-                TryAddScreen(block);
+                if (!TryAddDiscreteScreens(block))
+                    TryAddScreen(block);
                 if (!block.HasInventory)
                     return false;
                 assembler = block as IMyAssembler;
@@ -113,11 +113,12 @@ namespace IngameScript
             Screens.Add(new ManagedDisplay(display, scale, color, linesToSkip, monospace));
         }
 
-        private void TryAddDiscreteScreens(IMyTerminalBlock block)
+        private bool TryAddDiscreteScreens(IMyTerminalBlock block)
         {
+            bool retval = false;
             IMyTextSurfaceProvider Provider = block as IMyTextSurfaceProvider;
             if (null == Provider || Provider.SurfaceCount == 0)
-                return;
+                return true;
             StringComparison ignoreCase = StringComparison.InvariantCultureIgnoreCase;
             ini.TryParse(block.CustomData);
             ini.GetSections(SectionNames);
@@ -132,10 +133,12 @@ namespace IngameScript
                         if (section.Equals(SectionCandidateName.ToString(), ignoreCase))
                         {
                             AddScreen(Provider, displayNumber, section);
+                            retval = true;
                         }
                     }
                 }
             }
+            return retval;
         }
 
         private void TryAddScreen(IMyTerminalBlock block)
@@ -145,7 +148,7 @@ namespace IngameScript
                 return;
             ini.TryParse(block.CustomData);
             var displayNumber = ini.Get(PrinterSection, "display").ToUInt16();
-            if (displayNumber < ((IMyTextSurfaceProvider)Provider).SurfaceCount || ((IMyTextSurfaceProvider)Provider).SurfaceCount == 0)
+            if (displayNumber < ((IMyTextSurfaceProvider)Provider).SurfaceCount)
             {
                 AddScreen(Provider, displayNumber, PrinterSection);
             }
@@ -239,8 +242,8 @@ namespace IngameScript
         public Program()
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
-            GetBlocks();
             ReadConfig();
+            GetBlocks();
             GetAssemblerQueueAmounts();
             Me.CustomData = ConfiguredCustomData();
         }
@@ -327,8 +330,8 @@ namespace IngameScript
                     if (rebuild)
                     {
                         rebuild = false;
-                        GetBlocks();
                         ReadConfig();
+                        GetBlocks();
                         GetAssemblerQueueAmounts();
                         Me.CustomData = ConfiguredCustomData();
                     }

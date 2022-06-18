@@ -39,6 +39,7 @@ namespace IngameScript
             private bool monospace;
             private readonly String SpritePrefix = "MyObjectBuilder_Component/";
             private bool MakeSpriteCacheDirty = false;
+            private Color BackgroundColor, ForegroundColor;
 
             public ManagedDisplay(IMyTextSurface surface, float scale = 1.0f, Color highlightColor = new Color(), int linesToSkip = 0, bool monospace = false)
             {
@@ -46,6 +47,8 @@ namespace IngameScript
                 this.HighlightColor = highlightColor;
                 this.linesToSkip = linesToSkip;
                 this.monospace = monospace;
+                this.BackgroundColor = surface.ScriptBackgroundColor;
+                this.ForegroundColor = surface.ScriptForegroundColor;
 
                 // Scale everything!
                 StartHeight *= scale;
@@ -63,8 +66,12 @@ namespace IngameScript
 
             private void AddHeading()
             {
-                surface.Script = "";
-                surface.ScriptBackgroundColor = Color.Black;
+                if (surface.Script != "")
+                {
+                    surface.Script = "";
+                    surface.ScriptBackgroundColor = BackgroundColor;
+                    surface.ScriptForegroundColor = ForegroundColor;
+                }
                 Position = new Vector2(viewport.Width / 10f, StartHeight) + viewport.Position;
                 frame.Add(new MySprite()
                 {
@@ -125,7 +132,7 @@ namespace IngameScript
                     else
                         TextColor = Color.Goldenrod;
                 else
-                    TextColor = Color.Gray;
+                    TextColor = surface.ScriptForegroundColor;
                 frame.Add(new MySprite()
                 {
                     Type = SpriteType.TEXTURE,
@@ -182,6 +189,8 @@ namespace IngameScript
                         Type = SpriteType.TEXTURE,
                         Data = "SquareSimple",
                         Color = surface.BackgroundColor,
+                        Position = new Vector2(0, 0),
+                        Size = new Vector2(0, 0)
                     });
                 }
                 AddHeading();

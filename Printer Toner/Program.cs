@@ -25,7 +25,7 @@ namespace IngameScript
         List<IMyTerminalBlock> Containers = new List<IMyTerminalBlock>();
         List<IMyAssembler> AllAssemblers = new List<IMyAssembler>();
         List<IMyAssembler> PrintAssemblers = new List<IMyAssembler>();
-        static readonly string Version = "Version 1.3.4";
+        static readonly string Version = "Version 1.4.0";
         MyIni ini = new MyIni();
         static readonly string ComponentSection = "Components";
         static readonly string PrinterSection = "Printer";
@@ -212,8 +212,6 @@ namespace IngameScript
             foreach (var Component in Components.Values)
                 Component.Zero();
             yield return true;
-            ReadConfig();
-            yield return true;
             GetAssemblerQueueAmounts();
             yield return true;
             foreach (var container in Containers)
@@ -353,6 +351,11 @@ namespace IngameScript
             {
                 rebuild = true;
             }
+        }
+
+        public void Save()
+        {
+            Me.CustomData = ConfiguredCustomData();
         }
     }
 }

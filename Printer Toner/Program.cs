@@ -59,7 +59,7 @@ namespace IngameScript
 
             public void Zero()
             {
-                Stock = Required = Production = 0;
+                Stock = Production = 0;
             }
         }
 
@@ -209,6 +209,7 @@ namespace IngameScript
 
         public IEnumerator<bool> CountComponents()
         {
+            ReadConfig();
             foreach (var Component in Components.Values)
                 Component.Zero();
             yield return true;
@@ -260,10 +261,6 @@ namespace IngameScript
                         Components[key.Name].Required = ini.Get(ComponentSection, key.Name).ToInt32(0);
                     }
                 }
-                else
-                {
-                    Me.CustomData = ConfiguredCustomData();
-                }
                 delay = ini.Get(PrinterSection, "delay").ToInt32(3);
             }
         }
@@ -307,10 +304,12 @@ namespace IngameScript
 
         private String ConfiguredCustomData()
         {
+            // Adds newly discovered blueprints to the list
             ini.TryParse(Me.CustomData);
             foreach (var key in Components.Keys)
             {
-                ini.Set(ComponentSection, key, Components[key].Required);
+                if(!ini.ContainsKey(ComponentSection,key))
+                   ini.Set(ComponentSection, key, Components[key].Required);
             }
             return (ini.ToString());
         }
